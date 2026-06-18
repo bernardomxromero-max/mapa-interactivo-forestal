@@ -1,0 +1,5 @@
+# Temporary files and scripts
+*.py
+*.log
+.gemini/
+scratch/
