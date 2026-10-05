@@ -1,24 +1,32 @@
-// Map Dashboard Application Logic
+// Map Dashboard Application Logic - El Salvador 2025
 
 let map;
 let markerCluster;
+let kmzLayer;
 let allMarkers = {}; // Map feature ID to marker object
 let filteredData = [];
 
 // Base Layers
 let baseLayers = {};
+let overlayLayers = {};
 
 // Color palette for tree species
 const speciesColors = {
-    'pino': '#10b981',      // Emerald
-    'ciprés': '#60a5fa',     // Blue
     'conacaste': '#f59e0b',   // Amber
-    'laurel': '#f87171',     // Rose
-    'cedro': '#a78bfa',      // Purple
-    'teca': '#e2e8f0'        // White/Gray
+    'cedro': '#8b5cf6',      // Purple
+    'laurel': '#ef4444',     // Red / Rose
+    'mango': '#f97316',      // Orange
+    'maquilishuat': '#ec4899',// Pink
+    'pino': '#059669',      // Emerald
+    'ciprés': '#06b6d4',     // Cyan
+    'volador': '#84cc16',    // Lime
+    'ceiba': '#14b8a6',      // Teal
+    'cortez': '#eab308',     // Yellow
+    'teca': '#64748b',       // Slate
+    'aceituno': '#0284c7'    // Sky
 };
 
-const defaultColor = '#3b82f6';
+const defaultColor = '#2563eb'; // Bright Blue default
 
 function getSpeciesColor(speciesName) {
     if (!speciesName) return defaultColor;
@@ -41,18 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Initialize Leaflet Map
 function initMap() {
-    // 1. Define Base Maps
-    const darkLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 20
-    });
-
-    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        maxZoom: 19
-    });
-
+    // 1. Define Base Maps (OSM layer removed)
     const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
         maxZoom: 19
@@ -63,28 +60,47 @@ function initMap() {
         maxZoom: 17
     });
 
-    // 2. Initialize Map with default Dark Layer
+    // 2. Define El Salvador KMZ Boundary Overlay Layer (from El Salvador.kmz)
+    kmzLayer = L.geoJSON(typeof elSalvadorKmzData !== 'undefined' ? elSalvadorKmzData : null, {
+        style: {
+            color: '#10b981',        // Emerald green border stroke
+            weight: 2.8,
+            opacity: 0.95,
+            fillColor: '#10b981',
+            fillOpacity: 0.05
+        },
+        onEachFeature: function(feature, layer) {
+            const props = feature.properties || {};
+            const title = props.name || 'El Salvador';
+            layer.bindTooltip(`<b>${title}</b> (Límite Oficial KMZ)`, { sticky: true });
+        }
+    });
+
+    // 3. Initialize Map with default Satellite map and KMZ Boundary layer
     map = L.map('map', {
         zoomControl: false,
-        layers: [darkLayer]
-    }).setView([13.75, -88.2], 10);
+        layers: [satelliteLayer, kmzLayer]
+    }).setView([13.78, -88.8], 9);
 
     // Zoom control top right
     L.control.zoom({ position: 'topright' }).addTo(map);
 
-    // 3. Set Base Map Control (Base Maps Selector)
+    // 4. Base Maps & Overlays Control
     baseLayers = {
-        "Modo Oscuro": darkLayer,
-        "Mapa de Calles (OSM)": osmLayer,
-        "Satélite": satelliteLayer,
+        "Satélite (Esri)": satelliteLayer,
         "Topográfico": topoLayer
     };
-    L.control.layers(baseLayers, null, { position: 'topright' }).addTo(map);
 
-    // 4. Scale Control (Escala Gráfica)
+    overlayLayers = {
+        "🇸🇻 Límite El Salvador (KMZ)": kmzLayer
+    };
+
+    L.control.layers(baseLayers, overlayLayers, { position: 'topright', collapsed: false }).addTo(map);
+
+    // 5. Scale Control (Escala Gráfica)
     L.control.scale({ imperial: false, metric: true, position: 'bottomleft' }).addTo(map);
 
-    // 5. Marker Cluster Group
+    // 6. Marker Cluster Group
     markerCluster = L.markerClusterGroup({
         showCoverageOnHover: false,
         maxClusterRadius: 45,
@@ -92,7 +108,7 @@ function initMap() {
         disableClusteringAtZoom: 15
     }).addTo(map);
 
-    // 6. Coordinates Control (Coordenadas del Cursor)
+    // 7. Coordinates Control (Coordenadas del Cursor)
     const CoordsControl = L.Control.extend({
         options: { position: 'bottomright' },
         onAdd: function() {
@@ -108,7 +124,7 @@ function initMap() {
         document.getElementById('cursor-lon').textContent = e.latlng.lng.toFixed(5);
     });
 
-    // 7. Measurement Tools (Leaflet-Geoman)
+    // 8. Measurement Tools (Leaflet-Geoman)
     map.pm.addControls({
         position: 'topleft',
         drawMarker: false,
@@ -124,20 +140,19 @@ function initMap() {
         removalMode: true
     });
 
-    // Enable measurements in metric units
     map.pm.setGlobalOptions({
         measurements: {
             showMeasurements: true,
-            measurementUnit: 'metric' // m/km and m²/hectares
+            measurementUnit: 'metric'
         }
     });
 
-    // Translate Geoman texts to Spanish
     map.pm.setLang('es');
 }
 
 // Load filter options dynamically from forestData
 function loadFilters() {
+    const regions = new Set(['I', 'II', 'III', 'IV']);
     const depts = new Set();
     const munis = new Set();
     const species = new Set();
@@ -145,12 +160,14 @@ function loadFilters() {
 
     forestData.features.forEach(f => {
         const p = f.properties;
+        if (p.Region) regions.add(p.Region);
         if (p.Departamento) depts.add(p.Departamento);
         if (p.Municipio) munis.add(p.Municipio);
         if (p.Especie) species.add(p.Especie);
         if (p.Tecnico) tecnicos.add(p.Tecnico);
     });
 
+    populateSelect('filter-region', regions);
     populateSelect('filter-dept', depts);
     populateSelect('filter-muni', munis);
     populateSelect('filter-species', species);
@@ -159,13 +176,21 @@ function loadFilters() {
 
 function populateSelect(selectId, setValues) {
     const select = document.getElementById(selectId);
-    const sortedVals = Array.from(setValues).sort((a, b) => String(a).localeCompare(String(b)));
+    if (!select) return;
     
+    let sortedVals = Array.from(setValues);
+    if (selectId === 'filter-region') {
+        const order = {'I': 1, 'II': 2, 'III': 3, 'IV': 4};
+        sortedVals.sort((a, b) => (order[a] || 99) - (order[b] || 99));
+    } else {
+        sortedVals.sort((a, b) => String(a).localeCompare(String(b)));
+    }
+
     sortedVals.forEach(val => {
         if (val) {
             const opt = document.createElement('option');
             opt.value = val;
-            opt.textContent = val;
+            opt.textContent = selectId === 'filter-region' ? `Región ${val}` : val;
             select.appendChild(opt);
         }
     });
@@ -173,40 +198,52 @@ function populateSelect(selectId, setValues) {
 
 // Set up filter and action change events
 function setupEventListeners() {
-    // Base dropdowns and text search
-    const standardFilters = ['filter-dept', 'filter-muni', 'filter-species', 'filter-tecnico'];
+    const standardFilters = ['filter-region', 'filter-dept', 'filter-muni', 'filter-species', 'filter-tecnico'];
     standardFilters.forEach(id => {
-        document.getElementById(id).addEventListener('change', applyFilters);
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', applyFilters);
     });
     document.getElementById('search-owner').addEventListener('input', applyFilters);
 
-    // Advanced filters
     const advancedFilters = [
         'filter-date-start', 'filter-date-end',
         'filter-trees-min', 'filter-trees-max',
         'filter-volume-min', 'filter-volume-max'
     ];
     advancedFilters.forEach(id => {
-        document.getElementById(id).addEventListener('change', applyFilters);
-        document.getElementById(id).addEventListener('input', applyFilters);
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('change', applyFilters);
+            el.addEventListener('input', applyFilters);
+        }
     });
 
-    // Action buttons
-    document.getElementById('btn-export').addEventListener('click', exportToCSV);
-    document.getElementById('btn-print').addEventListener('click', () => {
-        window.print();
-    });
+    const exportBtn = document.getElementById('btn-export');
+    if (exportBtn) exportBtn.addEventListener('click', exportToCSV);
+
+    const exportMapBtn = document.getElementById('btn-export-map');
+    if (exportMapBtn) exportMapBtn.addEventListener('click', exportMapImage);
+
+    const printBtn = document.getElementById('btn-print');
+    if (printBtn) {
+        printBtn.addEventListener('click', () => {
+            if (map) map.invalidateSize();
+            setTimeout(() => {
+                window.print();
+            }, 150);
+        });
+    }
 }
 
 // Filter data and update map & sidebar
 function applyFilters() {
     const searchVal = document.getElementById('search-owner').value.toLowerCase().trim();
+    const regionVal = document.getElementById('filter-region') ? document.getElementById('filter-region').value : '';
     const deptVal = document.getElementById('filter-dept').value;
     const muniVal = document.getElementById('filter-muni').value;
     const speciesVal = document.getElementById('filter-species').value;
     const tecnicoVal = document.getElementById('filter-tecnico').value;
 
-    // Advanced filter values
     const dateStart = document.getElementById('filter-date-start').value;
     const dateEnd = document.getElementById('filter-date-end').value;
     const treesMin = parseInt(document.getElementById('filter-trees-min').value);
@@ -221,9 +258,11 @@ function applyFilters() {
         const matchSearch = !searchVal || 
             (p.Propietario && p.Propietario.toLowerCase().includes(searchVal)) ||
             (p.Expediente && p.Expediente.toLowerCase().includes(searchVal)) ||
-            (p.Canton && p.Canton.toLowerCase().includes(searchVal));
+            (p.Canton && p.Canton.toLowerCase().includes(searchVal)) ||
+            (p.Municipio && p.Municipio.toLowerCase().includes(searchVal));
             
         // 2. Dropdown filters
+        const matchRegion = !regionVal || p.Region === regionVal;
         const matchDept = !deptVal || p.Departamento === deptVal;
         const matchMuni = !muniVal || p.Municipio === muniVal;
         const matchSpecies = !speciesVal || p.Especie === speciesVal;
@@ -233,11 +272,11 @@ function applyFilters() {
         let matchDate = true;
         if (dateStart || dateEnd) {
             if (p.Fecha_Emision) {
-                const emisionDate = p.Fecha_Emision; // yyyy-mm-dd format
+                const emisionDate = p.Fecha_Emision;
                 if (dateStart && emisionDate < dateStart) matchDate = false;
                 if (dateEnd && emisionDate > dateEnd) matchDate = false;
             } else {
-                matchDate = false; // Exclude records without date if range is active
+                matchDate = false;
             }
         }
 
@@ -253,7 +292,7 @@ function applyFilters() {
         if (!isNaN(volumeMin) && volume < volumeMin) matchVolume = false;
         if (!isNaN(volumeMax) && volume > volumeMax) matchVolume = false;
 
-        return matchSearch && matchDept && matchMuni && matchSpecies && matchTecnico && matchDate && matchTrees && matchVolume;
+        return matchSearch && matchRegion && matchDept && matchMuni && matchSpecies && matchTecnico && matchDate && matchTrees && matchVolume;
     });
 
     updateStats();
@@ -281,7 +320,6 @@ function updateStats() {
         }
     });
 
-    // Find top species
     let topSpecies = 'N/A';
     let maxCount = 0;
     for (const sp in speciesCounts) {
@@ -291,12 +329,12 @@ function updateStats() {
         }
     }
 
-    document.getElementById('stat-records').textContent = totalRecords;
+    document.getElementById('stat-records').textContent = totalRecords.toLocaleString();
     document.getElementById('stat-trees').textContent = totalTrees.toLocaleString();
     document.getElementById('stat-volume').textContent = totalVol.toFixed(2) + ' m³';
     document.getElementById('stat-top-species').textContent = topSpecies;
-    document.getElementById('stat-top-species-sub').textContent = topSpecies !== 'N/A' ? `${maxCount} expedientes` : '-';
-    document.getElementById('record-counter').textContent = `${totalRecords} registros`;
+    document.getElementById('stat-top-species-sub').textContent = topSpecies !== 'N/A' ? `${maxCount} registros` : '-';
+    document.getElementById('record-counter').textContent = `${totalRecords.toLocaleString()} registros`;
 }
 
 // Render map markers inside Marker Cluster Group
@@ -306,32 +344,30 @@ function renderMapMarkers() {
 
     const bounds = [];
 
-    filteredData.forEach(f => {
+    filteredData.forEach((f, index) => {
         const lon = f.geometry.coordinates[0];
         const lat = f.geometry.coordinates[1];
         const p = f.properties;
-        const id = p.Expediente + '_' + p.N_registro;
+        const id = (p.Expediente || 'EXP') + '_' + index;
 
-        // Custom circle marker styling
         const trees = parseInt(p.Arboles_Autorizados) || 1;
-        const radius = Math.max(6, Math.min(22, Math.sqrt(trees) * 2.5));
+        const radius = Math.max(5, Math.min(20, Math.sqrt(trees) * 2.2));
         const color = getSpeciesColor(p.Especie);
 
         const marker = L.circleMarker([lat, lon], {
             radius: radius,
             fillColor: color,
             color: '#ffffff',
-            weight: 1.5,
+            weight: 1.2,
             opacity: 0.9,
-            fillOpacity: 0.75
+            fillOpacity: 0.8
         });
 
-        // Popup HTML structure
         const popupHtml = `
             <div class="popup-container">
                 <div class="popup-header">
                     <div class="popup-title">${p.Propietario || 'Sin Propietario'}</div>
-                    <div class="popup-subtitle">Expediente: ${p.Expediente || 'N/A'}</div>
+                    <div class="popup-subtitle">Expediente: ${p.Expediente || 'N/A'} | Región ${p.Region || ''}</div>
                 </div>
                 <div class="popup-grid">
                     <div class="popup-grid-item">
@@ -382,9 +418,12 @@ function renderMapMarkers() {
         bounds.push([lat, lon]);
     });
 
-    // Zoom map to fit filtered markers
     if (bounds.length > 0 && map) {
-        map.fitBounds(bounds, { padding: [50, 50], maxZoom: 13 });
+        if (bounds.length > 2000) {
+            map.setView([13.78, -88.8], 9);
+        } else {
+            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+        }
     }
 }
 
@@ -402,9 +441,12 @@ function renderSidebarList() {
         return;
     }
 
-    filteredData.forEach(f => {
+    const MAX_SIDEBAR_ITEMS = 300;
+    const displayData = filteredData.slice(0, MAX_SIDEBAR_ITEMS);
+
+    displayData.forEach((f, index) => {
         const p = f.properties;
-        const id = p.Expediente + '_' + p.N_registro;
+        const id = (p.Expediente || 'EXP') + '_' + index;
         const color = getSpeciesColor(p.Especie);
 
         const card = document.createElement('div');
@@ -413,14 +455,14 @@ function renderSidebarList() {
         
         card.innerHTML = `
             <div class="card-header-row">
-                <span class="expediente-id">${p.Expediente || 'S/E'}</span>
+                <span class="expediente-id">${p.Expediente || 'S/E'} (Reg. ${p.Region || ''})</span>
                 <span class="location-tag">${p.Municipio || ''}, ${p.Departamento || ''}</span>
             </div>
             <div class="owner-name" title="${p.Propietario}">${p.Propietario || 'Sin Propietario'}</div>
             <div class="card-details">
                 <div class="detail-item">
                     <span class="detail-icon" style="color: ${color};">●</span>
-                    <span style="font-weight: 500;">${p.Especie || 'N/A'}</span>
+                    <span style="font-weight: 600;">${p.Especie || 'N/A'}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-icon">🌳</span>
@@ -459,6 +501,13 @@ function renderSidebarList() {
 
         listContainer.appendChild(card);
     });
+
+    if (filteredData.length > MAX_SIDEBAR_ITEMS) {
+        const footerInfo = document.createElement('div');
+        footerInfo.style.cssText = 'text-align: center; color: var(--text-muted); padding: 12px; font-size: 11px; border-top: 1px dashed var(--border-color);';
+        footerInfo.textContent = `Mostrando los primeros ${MAX_SIDEBAR_ITEMS} de ${filteredData.length.toLocaleString()} expedientes. Refine la búsqueda o aplique filtros.`;
+        listContainer.appendChild(footerInfo);
+    }
 }
 
 // Highlight the sidebar card when map marker is clicked
@@ -479,21 +528,37 @@ function exportToCSV() {
         return;
     }
 
-    // CSV headers matching properties
     const headers = [
         'Expediente',
         'Región',
         'Departamento',
         'Municipio',
+        'Distrito',
         'Cantón',
         'Propietario',
+        'No_DUI',
         'Técnico',
+        'Agencia',
         'Objetivo',
+        'Uso del Suelo',
+        'Clase Agrológica',
         'Especie',
+        'Árboles Solicitados',
+        'Árboles Denegados',
         'Árboles Autorizados',
+        'Volumen Fuste (m3)',
+        'Volumen Rama (m3)',
+        'Volumen Leña (m3)',
         'Volumen Total (m3)',
+        'Área (Has)',
         'Área (m2)',
+        'Fecha Solicitud',
+        'Fecha Inspección',
+        'Fecha Informe',
         'Fecha Emisión',
+        'Fecha Retiro',
+        'Vigencia Días',
+        'Tipo Documento',
         'Longitud Decimal',
         'Latitud Decimal'
     ];
@@ -506,21 +571,37 @@ function exportToCSV() {
             p.Region || '',
             p.Departamento || '',
             p.Municipio || '',
+            p.Distrito || '',
             p.Canton || '',
             p.Propietario || '',
+            p.No_DUI || '',
             p.Tecnico || '',
+            p.Agencia || '',
             p.Objetivo || '',
+            p.Uso_Suelo || '',
+            p.Clase_Agrologica || '',
             p.Especie || '',
+            p.Arboles_Solicitados || '0',
+            p.Arboles_Denegados || '0',
             p.Arboles_Autorizados || '0',
+            p.Volumen_Fuste_m3 || '0',
+            p.Volumen_Rama_m3 || '0',
+            p.Volumen_Lena_m3 || '0',
             p.Volumen_Total_m3 || '0',
-            p.m2 || '',
+            p.Area_Has || '0',
+            p.m2 || '0',
+            p.Fecha_Solicitud || '',
+            p.Fecha_Inspeccion || '',
+            p.Fecha_Informe || '',
             p.Fecha_Emision || '',
-            coords[0], // Lon
-            coords[1]  // Lat
+            p.Fecha_Retiro || '',
+            p.Vigencia_Dias || '30',
+            p.Tipo_Documento || '',
+            coords[0],
+            coords[1]
         ];
     });
 
-    // Combine headers and rows
     const csvContent = [
         headers.join(','),
         ...rows.map(r => r.map(val => {
@@ -531,16 +612,56 @@ function exportToCSV() {
         }).join(','))
     ].join('\r\n');
 
-    // Create CSV Blob with UTF-8 BOM (\uFEFF) so Excel opens accents correctly
     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     
-    // Trigger download
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', 'expedientes_forestales_filtrados.csv');
+    link.setAttribute('download', 'aprovechamientos_forestales_2025_filtrados.csv');
     link.style.visibility = 'hidden';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+}
+
+// Export Map as PNG Image excluding the left sidebar
+async function exportMapImage() {
+    const btn = document.getElementById('btn-export-map');
+    const originalText = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.innerHTML = '<span>⏳ Exportando...</span>';
+        btn.disabled = true;
+    }
+
+    try {
+        const mapWrapper = document.querySelector('.map-wrapper');
+        if (map) map.invalidateSize();
+
+        if (typeof html2canvas !== 'undefined') {
+            const canvas = await html2canvas(mapWrapper, {
+                useCORS: true,
+                allowTaint: true,
+                logging: false,
+                scale: 2
+            });
+
+            const imageURI = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = 'mapa_forestal_el_salvador_2025.png';
+            link.href = imageURI;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } else {
+            window.print();
+        }
+    } catch (err) {
+        console.error('Error al exportar la imagen del mapa:', err);
+        window.print();
+    } finally {
+        if (btn) {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    }
 }

@@ -1,23 +1,26 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa Interactivo Forestal | Mayo 2026</title>
-    
+    <title>Mapa Interactivo Forestal | El Salvador 2025</title>
+
     <!-- Leaflet Map CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
     <!-- Leaflet.markercluster CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
-    
+
     <!-- Leaflet-Geoman CSS -->
     <link rel="stylesheet" href="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.css" />
-    
+
     <!-- Local Custom CSS -->
     <link rel="stylesheet" href="styles.css" />
 </head>
+
 <body>
 
     <div class="dashboard-container">
@@ -28,9 +31,9 @@
                     <span class="header-icon">🌲</span>
                     <h1>Mapa Forestal</h1>
                 </div>
-                <p>Monitoreo y Aprovechamiento Forestal - Mayo 2026</p>
+                <p>Monitoreo y Aprovechamiento Forestal - El Salvador 2025</p>
             </div>
-            
+
             <div class="sidebar-content">
                 <!-- Statistics Section -->
                 <section class="stats-container">
@@ -52,7 +55,8 @@
                         </div>
                         <div class="stat-card rose">
                             <span class="stat-label">Especie Principal</span>
-                            <span class="stat-value" id="stat-top-species" style="font-size: 15px; font-weight: 600; padding-top: 4px; margin-bottom: 2px;">Cargando...</span>
+                            <span class="stat-value" id="stat-top-species"
+                                style="font-size: 15px; font-weight: 600; padding-top: 4px; margin-bottom: 2px;">Cargando...</span>
                             <span class="stat-subtext" id="stat-top-species-sub">-</span>
                         </div>
                     </div>
@@ -61,10 +65,18 @@
                 <!-- Filters Section -->
                 <section class="filter-section">
                     <h2>🔍 Filtros y Búsqueda</h2>
-                    
+
                     <div class="filter-control">
                         <label for="search-owner">Buscar Propietario / Expediente</label>
-                        <input type="text" id="search-owner" class="search-input" placeholder="Ej. Mario Orlando, RIV/OS/..." />
+                        <input type="text" id="search-owner" class="search-input"
+                            placeholder="Ej. Mario Orlando, RI/SA/..., RIV/OS/..." />
+                    </div>
+
+                    <div class="filter-control">
+                        <label for="filter-region">Región Forestal</label>
+                        <select id="filter-region" class="filter-select">
+                            <option value="">Todas las regiones (I, II, III, IV)</option>
+                        </select>
                     </div>
 
                     <div class="filter-control">
@@ -109,15 +121,19 @@
                             <div class="filter-control">
                                 <label>Árboles Autorizados</label>
                                 <div class="range-inputs">
-                                    <input type="number" id="filter-trees-min" class="search-input" placeholder="Mín" min="0" />
-                                    <input type="number" id="filter-trees-max" class="search-input" placeholder="Máx" min="0" />
+                                    <input type="number" id="filter-trees-min" class="search-input" placeholder="Mín"
+                                        min="0" />
+                                    <input type="number" id="filter-trees-max" class="search-input" placeholder="Máx"
+                                        min="0" />
                                 </div>
                             </div>
                             <div class="filter-control">
                                 <label>Volumen Total (m³)</label>
                                 <div class="range-inputs">
-                                    <input type="number" id="filter-volume-min" class="search-input" placeholder="Mín" min="0" step="0.1" />
-                                    <input type="number" id="filter-volume-max" class="search-input" placeholder="Máx" min="0" step="0.1" />
+                                    <input type="number" id="filter-volume-min" class="search-input" placeholder="Mín"
+                                        min="0" step="0.1" />
+                                    <input type="number" id="filter-volume-max" class="search-input" placeholder="Máx"
+                                        min="0" step="0.1" />
                                 </div>
                             </div>
                         </div>
@@ -126,11 +142,13 @@
 
                 <!-- Actions Section -->
                 <section class="action-buttons-container">
-                    <button id="btn-export" class="action-btn excel-btn">
-                        <span>📥 Exportar a Excel (CSV)</span>
+                    <button id="btn-export" class="action-btn excel-btn" title="Exportar datos a CSV/Excel">
+                        <span>📥 Exportar Excel</span>
                     </button>
-                    <button id="btn-print" class="action-btn print-btn">
-                        <span>🖨️ Imprimir Mapa (PDF)</span>
+
+                    <button id="btn-print" class="action-btn print-btn"
+                        title="Imprimir o guardar mapa en PDF (sin panel)">
+                        <span>🖨️ Imprimir Mapa</span>
                     </button>
                 </section>
 
@@ -152,7 +170,7 @@
             <!-- Floating overlay title -->
             <div class="map-overlay-title">
                 <h3>Aprovechamiento Forestal Georreferenciado</h3>
-                <p>El Salvador | Vista de Morazán y Zona Oriental</p>
+                <p>El Salvador | Cobertura Nacional 2025 (Regiones I, II, III y IV)</p>
             </div>
 
             <!-- Leaflet Map Div -->
@@ -162,24 +180,32 @@
             <div class="map-legend">
                 <div class="legend-title">Leyenda (Especies)</div>
                 <div class="legend-item">
-                    <span class="legend-color" style="background-color: #10b981;"></span>
-                    <span>Pino</span>
-                </div>
-                <div class="legend-item">
-                    <span class="legend-color" style="background-color: #60a5fa;"></span>
-                    <span>Ciprés</span>
-                </div>
-                <div class="legend-item">
                     <span class="legend-color" style="background-color: #f59e0b;"></span>
                     <span>Conacaste</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: #a78bfa;"></span>
+                    <span>Cedro</span>
                 </div>
                 <div class="legend-item">
                     <span class="legend-color" style="background-color: #f87171;"></span>
                     <span>Laurel</span>
                 </div>
                 <div class="legend-item">
-                    <span class="legend-color" style="background-color: #a78bfa;"></span>
-                    <span>Cedro</span>
+                    <span class="legend-color" style="background-color: #fb923c;"></span>
+                    <span>Mango</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: #ec4899;"></span>
+                    <span>Maquilishuat</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: #10b981;"></span>
+                    <span>Pino</span>
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color" style="background-color: #06b6d4;"></span>
+                    <span>Ciprés</span>
                 </div>
                 <div class="legend-item">
                     <span class="legend-color" style="background-color: #3b82f6;"></span>
@@ -190,18 +216,26 @@
     </div>
 
     <!-- Leaflet Map JS library -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
     <!-- Leaflet.markercluster JS -->
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    
+
     <!-- Leaflet-Geoman JS -->
     <script src="https://unpkg.com/@geoman-io/leaflet-geoman-free@latest/dist/leaflet-geoman.min.js"></script>
-    
+
+    <!-- El Salvador KMZ Boundaries Layer -->
+    <script src="el_salvador_kmz.js"></script>
+
     <!-- Georeferenced Forest Data (global variable forestData) -->
     <script src="data.js"></script>
-    
+
+    <!-- html2canvas for map image export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
     <!-- Map Dashboard Logic -->
     <script src="app.js"></script>
 </body>
+
 </html>
